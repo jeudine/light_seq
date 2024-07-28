@@ -18,7 +18,7 @@ use std::{collections::VecDeque, fs::File};
 
 pub const NB_AUDIO_CHANNELS: usize = 3;
 const CHUNCK_SIZE: usize = 2048;
-const STAT_WINDOW_DURATION: usize = 10; // In seconds
+const STAT_WINDOW_DURATION: usize = 5; // In seconds
 const SWAP_TIME: [f32; 2] = [30.0, 30.0];
 
 #[derive(Copy, Clone)]
@@ -82,10 +82,10 @@ fn main() {
         }
         let d = d.lock().unwrap();
         let gain = d.gain;
-        for i in 1..3 {
-            if gain[i] > 2.0 {
+        for i in 0..3 {
+            if gain[i] > 1.5 {
                 pins[l_alloc[i] as usize].set_high();
-            } else if gain[i] <= 1.0 {
+            } else if gain[i] <= 0.5 {
                 pins[l_alloc[i] as usize].set_low();
             }
         }
