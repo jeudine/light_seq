@@ -1,0 +1,22 @@
+[package]
+name = "lseq"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
+repository = "https://github.com/jeudine/lseq"
+authors = ["Julien Eudine <julien@eudine.fr>"]
+
+[dependencies]
+cpal = "0.15.3"
+crossterm = "0.27.0"
+promptly = "0.3.1"
+rand = "0.8.5"
+realfft = "3.3.0"
+rppal = "0.18.0"
+
+[features]
+profile =[]
+
+[profile.release]
+lto = true
