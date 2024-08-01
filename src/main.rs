@@ -146,12 +146,11 @@ fn run(state: &Arc<Mutex<State>>, data: &Arc<Mutex<Data>>) {
                         shuffle_time = TEST_TIME + time;
                     }
                     _ => {
+                        let time = now.elapsed().as_secs_f32();
                         if time > shuffle_time {
-                            println!("TEST");
                             pins[l_alloc[test_light as usize] as usize].set_low();
                             test_light = (test_light + 1) % 3;
                             pins[l_alloc[test_light as usize] as usize].set_high();
-                            let time = now.elapsed().as_secs_f32();
                             shuffle_time = TEST_TIME + time;
                         }
                     }
