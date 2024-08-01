@@ -13,7 +13,7 @@ use rppal::gpio::Gpio;
 use std::io::{stdout, Write};
 use std::sync::{Arc, Mutex};
 use std::thread::{sleep, spawn};
-use std::{collections::VecDeque, error::Error, fs::File, time, time::Instant};
+use std::{collections::VecDeque, env, error::Error, fs::File, time, time::Instant};
 
 pub const NB_AUDIO_CHANNELS: usize = 3;
 const CHUNCK_SIZE: usize = 2048;
@@ -69,7 +69,15 @@ fn shuffle(rng: &mut ThreadRng) -> [u32; 3] {
     res
 }
 fn main() {
-    let (d, _s) = init().unwrap();
+    let args: Vec<String> = env::args().collect();
+
+    let device_id = if args.len() == 2 {
+        Some(args[1].parse::<u32>().unwrap())
+    } else {
+        None
+    };
+
+    let (d, _s) = init(device_id).unwrap();
     if cfg!(feature = "profile") {
         println!("Profiling {} secs", PROFILE_TIME);
         let time = time::Duration::from_secs(PROFILE_TIME);
@@ -113,7 +121,7 @@ fn run(state: &Arc<Mutex<State>>, data: &Arc<Mutex<Data>>) {
     let time = now.elapsed().as_secs_f32();
     let mut shuffle_time = SWAP_TIME[0] + rng.gen::<f32>() * SWAP_TIME[1] + time;
 
-    let mut prev_state = State::default();
+    let mut prev_state = Off;
     let mut test_light = 0;
 
     loop {
@@ -179,17 +187,20 @@ fn run(state: &Arc<Mutex<State>>, data: &Arc<Mutex<Data>>) {
     }
 }
 
-fn init() -> Result<(Arc<Mutex<Data>>, Stream), Box<dyn Error>> {
+fn init(device_id: Option<u32>) -> Result<(Arc<Mutex<Data>>, Stream), Box<dyn Error>> {
     let min_freq = 20;
     let max_freq = 20000;
     let host = cpal::default_host();
     let devices: Vec<_> = host.input_devices()?.collect();
 
-    for (i, d) in devices.iter().enumerate() {
-        println!("[DEVICE {}] {}", i, d.name()?);
-    }
-
-    let device_id: usize = prompt_default("Select Device Id", 0)?;
+    let device_id = if let Some(d) = device_id {
+        d as usize
+    } else {
+        for (i, d) in devices.iter().enumerate() {
+            println!("[DEVICE {}] {}", i, d.name()?);
+        }
+        prompt_default("Select Device Id", 0)?
+    };
 
     let device = &devices[device_id];
 
