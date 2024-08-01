@@ -147,6 +147,7 @@ fn run(state: &Arc<Mutex<State>>, data: &Arc<Mutex<Data>>) {
                     }
                     _ => {
                         if time > shuffle_time {
+                            println!("TEST");
                             pins[l_alloc[test_light as usize] as usize].set_low();
                             test_light = (test_light + 1) % 3;
                             pins[l_alloc[test_light as usize] as usize].set_high();
@@ -174,7 +175,7 @@ fn run(state: &Arc<Mutex<State>>, data: &Arc<Mutex<Data>>) {
                 }
                 _ => {}
             },
-        };
+        }
         prev_state = *state;
     }
 }
@@ -285,8 +286,10 @@ fn init() -> Result<(Arc<Mutex<Data>>, Stream), Box<dyn Error>> {
         _ => return Err(Box::from("Unsupported sample format")),
     };
 
-    for _ in 0..NB_AUDIO_CHANNELS {
-        println!("");
+    if cfg!(feature = "profile") {
+        for _ in 0..NB_AUDIO_CHANNELS {
+            println!("");
+        }
     }
 
     stream.play()?;
