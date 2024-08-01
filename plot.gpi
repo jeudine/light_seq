@@ -1,7 +1,13 @@
 #!/usr/bin/gnuplot -c
-set terminal png enhanced font 'FreeSans,15'
+file=ARG1
+set terminal pngcairo enhanced font 'FreeSans,15'
 set output "profile.png"
+
+set grid
+set ylabel "Relative Gain"
+set xlabel "Time (s)"
+
 set yrange [-5:5];
-plot 'debug.tsv' u 1:2 with lines title "Low", \
-'debug.tsv' u 1:3 with lines title "Mid", \
-'debug.tsv' u 1:4 with lines title "High"
+plot file u 1:2 with lines title "Low", \
+file u 1:3 with lines title "Mid", \
+file u 1:4 with lines title "High"

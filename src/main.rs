@@ -5,27 +5,39 @@ use cpal::{
     FromSample, Sample,
 };
 use crossterm::{cursor, terminal, ExecutableCommand};
-use promptly::prompt_default;
+use promptly::{prompt, prompt_default};
 use rand::prelude::*;
 use rand::seq::SliceRandom;
 use realfft::{num_complex::Complex, RealFftPlanner, RealToComplex};
 use rppal::gpio::Gpio;
-use std::error::Error;
 use std::io::{stdout, Write};
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
-use std::{collections::VecDeque, fs::File};
+use std::thread::{sleep, spawn};
+use std::{collections::VecDeque, error::Error, fs::File, time, time::Instant};
 
 pub const NB_AUDIO_CHANNELS: usize = 3;
 const CHUNCK_SIZE: usize = 2048;
 const STAT_WINDOW_DURATION: usize = 5; // In seconds
 const SWAP_TIME: [f32; 2] = [30.0, 30.0];
+const TEST_TIME: f32 = 2.0;
+const PROFILE_TIME: u64 = 10;
 
 #[derive(Copy, Clone)]
 pub struct Data {
     pub gain: [f32; NB_AUDIO_CHANNELS],
     _offset: f32,
 }
+
+#[derive(Copy, Clone, Default)]
+pub enum State {
+    Active,
+    Test,
+    #[default]
+    On,
+    Off,
+}
+
+use State::*;
 
 impl Data {
     pub fn new() -> Data {
@@ -58,10 +70,37 @@ fn shuffle(rng: &mut ThreadRng) -> [u32; 3] {
 }
 fn main() {
     let (d, _s) = init().unwrap();
+    if cfg!(feature = "profile") {
+        println!("Profiling {} secs", PROFILE_TIME);
+        let time = time::Duration::from_secs(PROFILE_TIME);
+        sleep(time);
+    } else {
+        let state = State::default();
+
+        let state_arc = Arc::new(Mutex::new(state));
+        let state_arc_1 = state_arc.clone();
+        let _ = spawn(move || run(&state_arc_1, &d));
+        loop {
+            let s: String = prompt(">").unwrap();
+
+            let mut state = state_arc.lock().unwrap();
+            for c in s.chars() {
+                match c {
+                    '0' => *state = Active,
+                    '1' => *state = Test,
+                    '2' => *state = On,
+                    '3' => *state = Off,
+                    '=' => return,
+                    _ => {}
+                }
+            }
+        }
+    }
+}
+
+fn run(state: &Arc<Mutex<State>>, data: &Arc<Mutex<Data>>) {
     let mut rng = rand::thread_rng();
-
     let gpio = Gpio::new().unwrap();
-
     let mut pins = [
         gpio.get(0).unwrap().into_output(),
         gpio.get(1).unwrap().into_output(),
@@ -74,23 +113,72 @@ fn main() {
     let time = now.elapsed().as_secs_f32();
     let mut shuffle_time = SWAP_TIME[0] + rng.gen::<f32>() * SWAP_TIME[1] + time;
 
+    let mut prev_state = State::default();
+    let mut test_light = 0;
+
     loop {
-        let time = now.elapsed().as_secs_f32();
-        if time > shuffle_time {
-            l_alloc = shuffle(&mut rng);
-            shuffle_time = SWAP_TIME[0] + rng.gen::<f32>() * SWAP_TIME[1] + time;
-        }
-        let d = d.lock().unwrap();
-        let gain = d.gain;
-        for i in 0..3 {
-            if gain[i] > 1.5 {
-                pins[l_alloc[i] as usize].set_high();
-            } else if gain[i] <= 0.5 {
-                pins[l_alloc[i] as usize].set_low();
+        let state = state.lock().unwrap();
+        match *state {
+            Active => {
+                let time = now.elapsed().as_secs_f32();
+                if time > shuffle_time {
+                    l_alloc = shuffle(&mut rng);
+                    shuffle_time = SWAP_TIME[0] + rng.gen::<f32>() * SWAP_TIME[1] + time;
+                }
+                let d = data.lock().unwrap();
+                let gain = d.gain;
+                for i in 0..3 {
+                    if gain[i] > 1.0 {
+                        pins[l_alloc[i] as usize].set_high();
+                    } else if gain[i] <= 0.5 {
+                        pins[l_alloc[i] as usize].set_low();
+                    }
+                }
             }
-        }
+            Test => {
+                match prev_state {
+                    On | Active | Off => {
+                        for i in 0..3 {
+                            pins[l_alloc[i] as usize].set_low();
+                        }
+
+                        let time = now.elapsed().as_secs_f32();
+                        shuffle_time = TEST_TIME + time;
+                    }
+                    _ => {
+                        if time > shuffle_time {
+                            pins[l_alloc[test_light as usize] as usize].set_low();
+                            test_light = (test_light + 1) % 3;
+                            pins[l_alloc[test_light as usize] as usize].set_high();
+                            let time = now.elapsed().as_secs_f32();
+                            shuffle_time = TEST_TIME + time;
+                        }
+                    }
+                };
+            }
+
+            On => match prev_state {
+                Off | Active | Test => {
+                    for i in 0..3 {
+                        pins[l_alloc[i] as usize].set_high();
+                    }
+                }
+                _ => {}
+            },
+
+            Off => match prev_state {
+                On | Active | Test => {
+                    for i in 0..3 {
+                        pins[l_alloc[i] as usize].set_low();
+                    }
+                }
+                _ => {}
+            },
+        };
+        prev_state = *state;
     }
 }
+
 fn init() -> Result<(Arc<Mutex<Data>>, Stream), Box<dyn Error>> {
     let min_freq = 20;
     let max_freq = 20000;
