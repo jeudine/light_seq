@@ -391,16 +391,18 @@ fn handle_input<T>(
                 }
             }
 
-            let mut stdout = stdout();
-            stdout.execute(cursor::MoveUp(gain.len() as u16)).unwrap();
-            stdout
-                .execute(terminal::Clear(terminal::ClearType::FromCursorDown))
-                .unwrap();
-            for (i, g) in gain.iter().enumerate() {
-                if *g == f32::MIN {
-                    writeln!(stdout, "audio_channel[{}]: -INF", i).unwrap();
-                } else {
-                    writeln!(stdout, "audio_channel[{}]: {}", i, g).unwrap();
+            if cfg!(feature = "profile") {
+                let mut stdout = stdout();
+                stdout.execute(cursor::MoveUp(gain.len() as u16)).unwrap();
+                stdout
+                    .execute(terminal::Clear(terminal::ClearType::FromCursorDown))
+                    .unwrap();
+                for (i, g) in gain.iter().enumerate() {
+                    if *g == f32::MIN {
+                        writeln!(stdout, "audio_channel[{}]: -INF", i).unwrap();
+                    } else {
+                        writeln!(stdout, "audio_channel[{}]: {}", i, g).unwrap();
+                    }
                 }
             }
 
