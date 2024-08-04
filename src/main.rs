@@ -15,7 +15,7 @@ use std::sync::{Arc, Mutex};
 use std::thread::{sleep, spawn};
 use std::{collections::VecDeque, env, error::Error, fs::File, time, time::Instant};
 
-pub const NB_AUDIO_CHANNELS: usize = 3;
+const NB_AUDIO_CHANNELS: usize = 3;
 const CHUNCK_SIZE: usize = 2048;
 const STAT_WINDOW_DURATION: usize = 5; // In seconds
 const SWAP_TIME: [f32; 2] = [30.0, 30.0];
