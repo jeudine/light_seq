@@ -19,7 +19,7 @@ pub const NB_AUDIO_CHANNELS: usize = 3;
 const CHUNCK_SIZE: usize = 2048;
 const STAT_WINDOW_DURATION: usize = 5; // In seconds
 const SWAP_TIME: [f32; 2] = [30.0, 30.0];
-const TEST_TIME: f32 = 2.0;
+const TEST_TIME: f32 = 1.0;
 const PROFILE_TIME: u64 = 10;
 
 #[derive(Copy, Clone)]
@@ -78,8 +78,8 @@ fn main() {
     };
 
     let (d, _s) = init(device_id).unwrap();
+
     if cfg!(feature = "profile") {
-        println!("Profiling {} secs", PROFILE_TIME);
         let time = time::Duration::from_secs(PROFILE_TIME);
         sleep(time);
     } else {
@@ -242,6 +242,7 @@ fn init(device_id: Option<u32>) -> Result<(Arc<Mutex<Data>>, Stream), Box<dyn Er
     };
 
     let mut profile = if cfg!(feature = "profile") {
+        println!("Profiling {} secs", PROFILE_TIME);
         let f = File::create("profile.tsv").unwrap();
         let now = Instant::now();
         Some((f, now))
