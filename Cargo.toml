@@ -1,10 +1,10 @@
 [package]
-name = "lseq"
+name = "light_seq"
 version = "0.1.0"
 edition = "2021"
 license = "GPL-3.0"
 readme = "README.md"
-repository = "https://github.com/jeudine/lseq"
+repository = "https://github.com/jeudine/light_seq"
 authors = ["Julien Eudine <julien@eudine.fr>"]
 description = "Raspberry Pi based light show program reacting to the audio input."
 categories = ["embedded", "multimedia"]
